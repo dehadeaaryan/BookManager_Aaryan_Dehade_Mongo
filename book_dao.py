@@ -1,6 +1,7 @@
 # IMPORTS
 
 from pymongo_connector import collection
+from format import Format
 
 def findAll():
     results = collection.find()
