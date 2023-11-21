@@ -3,7 +3,7 @@
 import sys
 import shutil
 from time import sleep
-from book_dao import BOOK_DAO
+from book_dao import BookDAO
 from format import Format
 
 
@@ -30,7 +30,7 @@ SEARCH_MENU_OPTIONS = {
     6: 'Search by year',
     7: 'Search by title and publisher',
 }
-DAO = BOOK_DAO()
+DAO = BookDAO()
 HIDDEN = {
     69: 'Delete a publisher',
 }
@@ -45,7 +45,7 @@ def handle_interrupt() -> None:
     exit_string = 'INTERRUPTED: ' + EXIT_STRING
     print(Format.format(f'\n\n\n{exit_string:-^{WIDTH}}\n{"":*^{WIDTH}}\n\n', ('bold', 'main')))
     # close the database connection
-    DAO.exit()
+    DAO.close()
     # exit
     sys.exit(0)
 
@@ -125,7 +125,7 @@ def run(debug: bool = False) -> None:
             option69()
             continue
     # close the database connection
-    DAO.exit()
+    DAO.close()
 
 def option1() -> None:
     """Function that handles the 'add a new publisher' option."""
@@ -151,15 +151,12 @@ def option1() -> None:
             phone = remove_quotes_and_handle_nulls(input('Publisher phone ("<" to go back): '))
             if phone == '<':
                 return
-            phone = str(int(phone))
+            phone_as_int = int(phone)
         except KeyboardInterrupt:
             handle_interrupt()
         except ValueError:
             print(Format.format('Publisher phone number must be an integer.', ('bold', 'error')))
             continue
-        # if len(phone) != 10:
-        #     print('Publisher phone number must be 10 digits long.')
-        #     continue
         break
     # get city loop
     while True:
@@ -185,7 +182,7 @@ def option2() -> None:
             isbn = remove_quotes_and_handle_nulls(input('Book ISBN ("<" to go back): '))
             if isbn == '<':
                 return
-            isbn = str(int(isbn))
+            isbn_as_int = int(isbn)
         except KeyboardInterrupt:
             handle_interrupt()
         except ValueError:
@@ -194,9 +191,6 @@ def option2() -> None:
         if isbn == '':
             print(Format.format('Book ISBN cannot be empty.', ('bold', 'error')))
             continue
-        # if len(isbn) != 10:
-        #     print('Book ISBN must be 10 digits long.')
-        #     continue
         break
     # get title loop
     while True:
@@ -247,15 +241,12 @@ def option2() -> None:
             if previous_edition == '':
                 previous_edition = None
                 break
-            previous_edition = str(int(previous_edition))
+            previous_edition_as_int = int(previous_edition)
         except KeyboardInterrupt:
             handle_interrupt()
         except ValueError:
             print(Format.format('Book previous edition must be an integer.', ('bold', 'error')))
             continue
-        # if len(previous_edition) != 10:
-        #     print('Book previous edition must be 10 digits long.')
-        #     continue
         break
     # get price loop
     while True:
@@ -288,7 +279,7 @@ def option3() -> None:
             isbn = remove_quotes_and_handle_nulls(input('Book ISBN ("<" to go back): '))
             if isbn == '<':
                 return
-            isbn = str(int(isbn))
+            isbn_as_int = int(isbn)
         except KeyboardInterrupt:
             handle_interrupt()
         except ValueError:
@@ -297,9 +288,6 @@ def option3() -> None:
         if isbn == '':
             print(Format.format('Book ISBN cannot be empty.', ('bold', 'error')))
             continue
-        # if len(isbn) != 10:
-        #     print('Book ISBN must be 10 digits long.')
-        #     continue
         break
     # get title loop if change title
     try:
@@ -361,7 +349,7 @@ def option3() -> None:
                 if previous_edition == '':
                     previous_edition = None
                     break
-                previous_edition = str(int(previous_edition))
+                previous_edition_as_int = int(previous_edition)
             except KeyboardInterrupt:
                 handle_interrupt()
             except ValueError:
@@ -370,9 +358,6 @@ def option3() -> None:
             if previous_edition == '':
                 print(Format.format('Book previous edition cannot be empty.', ('bold', 'error')))
                 continue
-            # if len(previous_edition) != 10:
-            #     print('Book previous edition must be 10 digits long.')
-            #     continue
             break
     # get price loop if change price
     try:
@@ -404,7 +389,7 @@ def option4() -> None:
             isbn = remove_quotes_and_handle_nulls(input('Book ISBN ("<" to go back): '))
             if isbn == '<':
                 return
-            isbn = str(int(isbn))
+            isbn_as_int = int(isbn)
         except KeyboardInterrupt:
             handle_interrupt()
         except ValueError:
@@ -413,9 +398,6 @@ def option4() -> None:
         if isbn == '':
             print(Format.format('Book ISBN cannot be empty.', ('bold', 'error')))
             continue
-        # if len(isbn) != 10:
-        #     print('Book ISBN must be 10 digits long.')
-        #     continue
         break
     # delete book and print result
     print(f'\n{DAO.delete_book(isbn)}')
@@ -465,7 +447,7 @@ def option5() -> None:
         while True:
             try:
                 isbn = remove_quotes_and_handle_nulls(input('Book ISBN: '))
-                isbn = str(int(isbn))
+                isbn_as_int = int(isbn)
             except KeyboardInterrupt:
                 handle_interrupt()
             except ValueError:
@@ -474,9 +456,6 @@ def option5() -> None:
             if isbn == '':
                 print(Format.format('\nBook ISBN cannot be empty.', ('bold', 'error')))
                 continue
-            # if len(isbn) != 10:
-            #     print('Book ISBN must be 10 digits long.')
-            #     continue
             break
         result = DAO.search_books_by_ISBN(isbn)
     elif option == 4:
@@ -558,21 +537,16 @@ def option5() -> None:
     elif type(result) == str:
         print(Format.format(f'\n{result}', ('bold', 'error')))
     else:
-        # column_widths = [0 for i in range(len(result[0]))]
-        column_data = []
         columns = {}
         print(Format.format('\nSearch results:', ('bold', 'info')))
-        column_data = DAO.describe_books()
+        column_data = DAO.get_fields()
         if type(column_data) == str:
             print(Format.format(f'\n{column_data}', ('bold', 'error')))
             return
         else:
-            column_data = [col[0] for col in column_data]
-            for i in range(len(column_data)):
-                column_data[i] = column_data[i].capitalize()
-                width = max([len(str(book[i])) for book in result] + [len(column_data[i])])
-                column_data[i] = f'{column_data[i]: ^{width}}'
-                columns[column_data[i]] = width
+            for field in column_data:
+                width = max([len(str(book[field])) for book in result] + [len(field)])
+                columns[field] = width
             if len(sys.argv) > 1 and 'adaptive-table' in sys.argv:
                 total_width = sum(columns.values()) + len(columns) * 3 - 1
                 for key, value in columns.items():
@@ -583,8 +557,8 @@ def option5() -> None:
             print(Format.format(output[:-3], ('bold', 'main')))
         for book in result:
             output = ''
-            for i in range(len(book)):
-                output += f'{str(book[i]): ^{columns[column_data[i]]}} | '
+            for field in book:
+                output += f'{str(book[field]): ^{columns[field]}} | '
             print(output[:-3])
     return
 
@@ -621,6 +595,8 @@ def main() -> None:
     run()
     # print exit message
     print(Format.format(f'\n\n{EXIT_STRING:-^{WIDTH}}\n{"":*^{WIDTH}}\n\n', ('bold', 'main')))
+    # close the database connection
+    DAO.close()
     # exit
     sys.exit(0)
 
