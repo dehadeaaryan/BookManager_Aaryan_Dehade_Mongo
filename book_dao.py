@@ -226,7 +226,7 @@ class BookDAO:
         fltr = {'name': name}
         # try deleting the publisher
         try:
-            self.bookCollection.delete_one(fltr)
+            self.publisherCollection.delete_one(fltr)
             return Format.info(f'Publisher {name} deleted successfully.')
         except Exception as e:
             return Format.warning(str(e).split(' ', 2)[2])
